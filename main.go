@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"os"
 	"os/signal"
@@ -14,7 +15,7 @@ var displayProgress = true
 func main() {
 	var err error
 
-	conn    := flag.Int("n", runtime.NumCPU(), "connection")
+	conn := flag.Int("n", runtime.NumCPU(), "connection")
 	skiptls := flag.Bool("skip-tls", true, "skip verify certificate for https")
 
 	flag.Parse()
@@ -55,7 +56,14 @@ func main() {
 			err := os.RemoveAll(FolderOf(command))
 			FatalCheck(err)
 		}
-		Execute(command, nil, *conn, *skiptls)
+		// urls := []string{"https://wiki.archlinux.org/", "https://wiki.archlinux.org/index.php/Frequently_asked_questions"}
+		urls, err := readLines(command)
+		if err != nil {
+			panic(err)
+		}
+		for _, url := range urls {
+			Execute(url, nil, *conn, *skiptls)
+		}
 	}
 }
 
@@ -136,4 +144,21 @@ hget [URL] [-n connection] [-skip-tls true]
 hget tasks
 hget resume [TaskName]
 `)
+}
+
+// readLines reads a whole file into memory
+// and returns a slice of its lines.
+func readLines(path string) ([]string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return lines, scanner.Err()
 }
